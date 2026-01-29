@@ -1,88 +1,77 @@
 <<<<<<< HEAD
-# Photometric-Stereo
-A Programming Assignment fronm: https://www.cs.cornell.edu/courses/cs6644/2014fa/assignments/assignment1.html
-=======
 # Photometric Stereo Toolkit
 
-这是一个基于 Python 实现的**光度立体（Photometric Stereo）**三维重建系统。它能够通过多张不同光照方向的 2D 图像，高精度地恢复物体的表面法线（Normal）、漫反射贴图（Albedo）以及 3D 深度模型（Height Map）。
+A Python implementation of a Photometric Stereo pipeline for reconstructing surface normals, albedo (diffuse reflectance), and depth (height maps) from multiple images captured under varying lighting directions.
 
-## 📂 项目结构
+## Features
 
-```text
+- Recover per-pixel surface normals and albedo from multiple images
+- Integrate normals into a smooth height map using a DCT-based Poisson solver
+- Support for high-resolution inputs and color restoration
+- Simple GUI for virtual relighting and interactive inspection
+
+## Repository Structure
+
+``text
 Photometric Stereo/
 ├── src/
-│   ├── utils.py             # 数据解析与彩色/灰度图像加载
-│   ├── step1_calibration.py  # 光源方向与几何标定
-│   ├── step2_photometric.py  # 法线求解与彩色贴图合成
-│   └── step3_integration.py  # 基于 DCT 的频域深度积分
-├── psmImages/               # 原始数据集 (buddha, cat, chrome 等)
-├── output/                  # 存放生成的法线、彩色贴图及高度图
-├── gui_app.py               # 交互式 GUI (支持虚拟手电筒重布光)
-└── README.md                # 项目说明文档
-
+│   ├── utils.py               # Data parsing and image loading helpers
+│   ├── step1_calibration.py   # Light source calibration using a chrome ball
+│   ├── step2_photometric.py   # Photometric stereo: solve normals & albedo
+│   └── step3_integration.py   # DCT-based integration to recover height map
+├── psmImages/                 # Input datasets (buddha, cat, chrome, ...)
+├── output/                    # Generated normals, albedo maps, height maps
+├── gui_app.py                 # Simple GUI for relighting and visualization
+└── README.md                  # This file
 ```
 
-## 🛠️ 实现原理简析
+## Quick Start
 
-### 1. 光源标定 (Calibration) - `step1_calibration.py`
+1. Create a Python virtual environment (recommended) and activate it.
 
-* **原理**：利用几何光学中的反射定律。在拍摄铬球（Chrome Ball）时，球面上最亮的点（镜面高光）的法线  正好位于视线方向  和光源方向  的角平分线上。
-* **实现**：
-1. 通过 Mask 确定球心和半径。
-2. 定位高光点 ，计算该点球面法线 。
-3. 已知 ，利用公式  推导光源向量。
+2. Install dependencies:
 
+```bash
+pip install -r requirements.txt
+```
 
+If `requirements.txt` is not present, install the main libraries:
 
-### 2. 法线与反射率求解 (Photometric Stereo) - `step2_photometric.py`
-
-* **原理**：基于**朗伯体反射模型（Lambertian Model）**：。
-* **实现**：
-1. **最小二乘法**：对于每个像素，利用 12 组观测值  和光源  构建超静定方程。
-2. **解耦**：解出向量 。其中  的模长即为反射率（Albedo），单位化后的  即为法向量贴图（Normal Map）。
-3. **彩色恢复**：固定法线 ，在 R/G/B 通道分别通过投影计算，洗掉阴影，还原材质本色。
-
-
-
-### 3. 高度图积分 (Integration) - `step3_integration.py`
-
-* **原理**：将 2D 法线转化为 3D 深度。本质是求解**泊松方程（Poisson Equation）**，使重建表面的梯度与实测法线最匹配。
-* **实现**：
-1. **频域求解**：采用 **DCT（离散余弦变换）**。相比传统的稀疏矩阵迭代，DCT 积分在处理百万级像素（原始分辨率）时速度提升数倍，且全局连续性更好。
-2. **尺度对齐**：引入标定时记录的铬球半径  作为物理基准，确保  轴深度不再是“一根线”，而是具有真实的起伏比例。
-
-
-
-### 4. 虚拟布光渲染 (Relighting) - `gui_app.py`
-
-* **原理**：利用计算机图形学的实时点积照明。
-* **实现**：。通过 GUI 的滑动条动态改变 ，实现“虚拟手电筒”实时照亮 3D 模型的效果。
-
----
-
-## 🚀 快速开始
-
-1. **环境配置**：
 ```bash
 pip install numpy opencv-python matplotlib scipy Pillow
-
 ```
 
+3. Run the GUI (for interactive relighting and inspection):
 
-2. **运行交互界面**：
 ```bash
 python gui_app.py
-
 ```
 
+4. Typical workflow (command-line or via GUI):
 
-3. **操作建议**：先在下拉框选 `chrome.txt` 跑 **Step 1**，再切回 `buddha.txt` 跑后续步骤。
+- Step 1: Calibrate light directions using the chrome ball dataset (e.g., `chrome.txt`).
+- Step 2: Run photometric stereo to compute normals and albedo (use calibrated light directions).
+- Step 3: Integrate normals into a height map using the DCT Poisson solver.
+
+## Implementation Notes
+
+- Calibration (src/step1_calibration.py): locate the chrome ball, detect highlights, compute per-image light directions.
+- Photometric stereo (src/step2_photometric.py): solve a linear system per pixel (least squares) to obtain the product of albedo and normal; separate magnitude (albedo) and direction (normal).
+- Integration (src/step3_integration.py): use a frequency-domain solver (DCT) for robust and fast height recovery on large images.
+
+## Data
+
+Place image lists (e.g., `buddha.txt`, `cat.txt`, `chrome.txt`) and their corresponding images under `psmImages/`.
+
+Outputs (normals, albedo, height maps) are written to `output/` by the scripts.
+
+## Notes & Tips
+
+- For best results, calibrate light directions using the chrome ball set before running photometric stereo on target objects.
+- If you encounter shadows or specularities, use robust masking or channel-wise color processing to reduce artifacts.
+
+## License
+
+This repository is provided as-is for research and educational use. Add a license file if you plan to publish or redistribute.
 
 ---
-
-## 💡 技术亮点
-
-* **高分辨率支持**：利用 DCT 积分技术，支持原始分辨率的高度图恢复，不丢失细节。
-* **实时交互**：GUI 集成了虚拟布光预览，可直观验证法线贴图的精度。
-* **物理尺度校验**：基于铬球半径的  轴自动对齐，解决光度立体常见的 Bas-relief 歧义。
->>>>>>> 5b2a6ba (Initial commit: Photometric Stereo project)
